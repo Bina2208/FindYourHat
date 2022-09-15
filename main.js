@@ -5,28 +5,39 @@ const hole = 'O';
 const fieldCharacter = '░';
 const pathCharacter = '*';
 
+const LEFT = 'l';
+const RIGHT = 'r';
+const UP = 'u';
+const DOWN = 'd';
+
 class Field {
     #field;
     #direction;
     #currentPosX = 0;
     #currentPosY = 0;
 
-    constructor(arr2D) {
-        this.#field = arr2D;
+    constructor(arrPos2D) {
+        this.#field = arrPos2D;
+        if(arrPos2D.startX !== undefined)
+            this.#currentPosX = arrPos2D.startX;
+        if(arrPos2D.startY !== undefined)
+            this.#currentPosY = arrPos2D.startY;
         this.print();
     }
 
     print() {
         for (const i of this.#field) {
             console.log(`${i.join()}`);
+            
         }
+        console.log(`Your Coordinats x:${this.#currentPosX} y:${this.#currentPosY}`);
         this.#direction = prompt('Which way? ');
         this.move(this.#direction);
     }
 
     checkInput(input) {
         const strInput = input.toString().toLowerCase();
-        if (strInput === 'r' || strInput === 'l' || strInput === 'u' || strInput === 'd') {
+        if (strInput === RIGHT || strInput === LEFT || strInput === UP || strInput === DOWN) {
             return true;
         } else {
             return false;
@@ -47,16 +58,16 @@ class Field {
 
     doMove(direction) {
         switch (direction) {
-            case 'r':
+            case RIGHT:
                 this.#currentPosX++;
                 break;
-            case 'l':
+            case LEFT:
                 this.#currentPosX--;
                 break;
-            case 'u':
+            case UP:
                 this.#currentPosY--;
                 break;
-            case 'd':
+            case DOWN:
                 this.#currentPosY++;
                 break;
             default:
@@ -66,24 +77,24 @@ class Field {
     }
 
     updateCurrentPos() {
-        this.#field[this.#currentPosY][this.#currentPosX] = '*';
+        this.#field[this.#currentPosY][this.#currentPosX] = pathCharacter;
     }
 
     inspectResultOfTheMove() {
         if (this.checkNewPos()) {
             const currentElement = this.#field[this.#currentPosY][this.#currentPosX];
             switch (currentElement) {
-                case 'O':
+                case hole:
                     console.log('GAME OVER: You falled in a hole.');
                     break;
-                case '░':
+                case fieldCharacter:
                     this.updateCurrentPos();
                     this.print();
                     break;
-                case '*':
+                case pathCharacter:
                     this.print();
                     break;
-                case '^':
+                case hat:
                     console.log('WIN: Great! You found your hat. :).');
                     break;
                 default:
@@ -100,7 +111,7 @@ class Field {
             this.doMove(direction);
             this.inspectResultOfTheMove();
         } else {
-            console.log(`Wrong input: ${input}. Use "r" for right, "l" for left, "u" for up and "d" for down`);
+            console.log(`Wrong input: ${direction}. Use "r" for right, "l" for left, "u" for up and "d" for down`);
             this.print();
         }
     }
@@ -108,57 +119,65 @@ class Field {
     static generateField(width, height, percentage) {
         const myField = [];
         const fieldSize = width * height;
-
         // percentage of holes
         const holeCount = Math.round(fieldSize * (percentage / 100));
         // array for random hole selection
         let arrRandomPos = [];
 
+        // ----------------------------------------
+        // HELPER FUNCTION: get random ArrayPos
+        const randomArrPos = (arrLength) => {
+            return Math.floor(Math.random() * arrLength);
+        }
+        // HELPER FUNCTION: extract random Pos from an position Array
+        const editFieldAndPosArray = (myField, sign, arrRandomPos, posIndex) => {
+            // set sign on random position
+            myField[arrRandomPos[posIndex].y][arrRandomPos[posIndex].x] = sign;
+            // remove position from possible selections
+            arrRandomPos.splice(posIndex, 1);
+        }
+        //----------------------------------------
 
+        // Init arrays
         for (let i = 0; i < height; i++) {
             myField[i] = new Array(width);
             arrRandomPos[i] = new Array(width);
             for (let j = 0; j < width; j++) {
                 arrRandomPos[i][j] = {
-                    x: i,
-                    y: j
+                    x: j,
+                    y: i
                 };
-                myField[i][j] = '░';
+                myField[i][j] = fieldCharacter;
             }
         }
-
         // build a flat array with objecst of possible positions for holes
         arrRandomPos = arrRandomPos.flat();
 
-        myField[0][0] = '*';
-        // Remove start position of '*' for possible holes
-        arrRandomPos.splice(0,1);
-
+        //------------------- Start Position --------------
+        // set a random start position
+        let startPosIndex = randomArrPos(arrRandomPos.length);
+        // add startPosition to field
+        myField.startX = arrRandomPos[startPosIndex].x;
+        myField.startY = arrRandomPos[startPosIndex].y;
+        editFieldAndPosArray(myField, pathCharacter, arrRandomPos, startPosIndex);
         
+        // ------------------ Holes ------------------------
+        // set random holes
         let hCnt = 0;
         while(hCnt < holeCount) {
             // random selection of the possible positions for the holes
-            let pos = Math.floor(Math.random() * arrRandomPos.length);
-            // set random holes 
-            myField[arrRandomPos[pos].x][arrRandomPos[pos].y] = 'O';
-            // remove hole position from next random selection
-            arrRandomPos.splice(pos, 1);
+            let posIndex = randomArrPos(arrRandomPos.length);
+            // set random holes and remove position from arrRandomPos
+            editFieldAndPosArray(myField, hole, arrRandomPos, posIndex);
             hCnt++;
         }
         
+        // ------------------- Hat -------------------------
         //set hat
-        let hatPos = Math.floor(Math.random() * arrRandomPos.length);
-        myField[arrRandomPos[hatPos].x][arrRandomPos[hatPos].y] = '^';
+        let hatPosIndex = randomArrPos(arrRandomPos.length);
+        editFieldAndPosArray(myField, hat, arrRandomPos, hatPosIndex);
 
-        return myField; 
-
-        // test output
-        /* console.log(holeCount);
-        for (const i of myField) {
-        
-            console.log(`${i.join()}`);
-        } */
-    
+        return myField;     
     }
 }
 
